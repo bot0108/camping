@@ -21,6 +21,7 @@ namespace camp.Controllers
             _configuration = configuration;
         }
 
+
         [HttpGet]
         [Route("GetAllUsers&Sites")]
         public string GetUser()
@@ -44,8 +45,8 @@ namespace camp.Controllers
                     User user = new User();
                     user.id = Convert.ToInt32(dt.Rows[i]["id"]);
                     user.name = Convert.ToString(dt.Rows[i]["name"]);
-                    user.age = Convert.ToInt32(dt.Rows[i]["age"]);
-                    
+                    user.email = Convert.ToString(dt.Rows[i]["email"]);
+                    user.password = Convert.ToString(dt.Rows[i]["password"]);
                     usersList.Add(user);
                     
                 }
@@ -93,14 +94,11 @@ namespace camp.Controllers
                 {
                     await con.OpenAsync();
 
-                    string query = "INSERT INTO user (name, age, email,firstName,lastName,password) VALUES (@Name, @Age, @Email,@FirstName,@LastName,@Password)";
+                    string query = "INSERT INTO user (name,email,password) VALUES (@Name,@Email,@Password)";
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@Name", newUser.name);
-                        cmd.Parameters.AddWithValue("@Age", newUser.age);
                         cmd.Parameters.AddWithValue("@Email", newUser.email);
-                        cmd.Parameters.AddWithValue("@FirstName", newUser.firstName);
-                        cmd.Parameters.AddWithValue("@LastName", newUser.lastName);
                         cmd.Parameters.AddWithValue("@Password", newUser.password);
 
                         await cmd.ExecuteNonQueryAsync();
@@ -114,5 +112,43 @@ namespace camp.Controllers
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
+        [HttpPost]
+        [Route("Login")]
+        public async Task<IActionResult> Login(UserLoginRequest loginRequest)
+        {
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection").ToString()))
+                {
+                    await con.OpenAsync();
+
+                    string query = "SELECT * FROM user WHERE email = @Email AND password = @Password";
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@Email", loginRequest.email);
+                        cmd.Parameters.AddWithValue("@Password", loginRequest.password);
+
+                        using (var reader = await cmd.ExecuteReaderAsync())
+                        {
+                            if (reader.HasRows)
+                            {
+                                // Authentication successful
+                                return Ok(new { success = true });
+                            }
+                            else
+                            {
+                                // Authentication failed
+                                return Ok(new { success = false });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+
     }
 }

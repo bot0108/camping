@@ -22,6 +22,11 @@
         public string email { get; set; }
         public string password { get; set; }
     }
+    public class FeaturedSite
+    {
+        public string spotname { get; set; }
+        public string description { get; set; }
+    }
 }
    
     

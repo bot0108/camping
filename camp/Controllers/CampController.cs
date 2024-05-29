@@ -48,7 +48,7 @@ namespace camp.Controllers
                     user.email = Convert.ToString(dt.Rows[i]["email"]);
                     user.password = Convert.ToString(dt.Rows[i]["password"]);
                     usersList.Add(user);
-                    
+
                 }
             }
             if (dt2.Rows.Count > 0)
@@ -67,7 +67,7 @@ namespace camp.Controllers
                 }
             }
 
-            if (usersList.Any()&&spotsList.Any())
+            if (usersList.Any() && spotsList.Any())
             {
                 var combinedData = new
                 {
@@ -113,6 +113,36 @@ namespace camp.Controllers
             }
         }
         [HttpPost]
+        [Route("AddListing")]
+        public async Task<IActionResult> AddListing(Spot newSpot)
+        {
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+                {
+                    await con.OpenAsync();
+
+                    string query = "INSERT INTO spots (spotname, location, capacity, description, price) VALUES (@SpotName, @Location, @Capacity, @Description, @Price)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@SpotName", newSpot.spotname);
+                        cmd.Parameters.AddWithValue("@Location", newSpot.location);
+                        cmd.Parameters.AddWithValue("@Capacity", newSpot.capacity);
+                        cmd.Parameters.AddWithValue("@Description", newSpot.description);
+                        cmd.Parameters.AddWithValue("@Price", newSpot.price);
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                return Ok("Listing added successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+        [HttpPost]
         [Route("Login")]
         public async Task<IActionResult> Login(UserLoginRequest loginRequest)
         {
@@ -149,6 +179,36 @@ namespace camp.Controllers
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
+        [HttpGet]
+        [Route("GetAllSpots")]
+        public string GetSpots()
+        {
+            MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection").ToString());
+            MySqlDataAdapter da = new MySqlDataAdapter("SELECT * FROM spots", con);
+            DataTable dt = new DataTable();
+            da.Fill(dt);
+            List<FeaturedSite> spotsList = new List<FeaturedSite>();
+            Response response = new Response();
+            if (dt.Rows.Count > 0)
+            {
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    FeaturedSite cs = new FeaturedSite();
+                    cs.spotname = Convert.ToString(dt.Rows[i]["spotname"]);
+                    cs.description = Convert.ToString(dt.Rows[i]["description"]);
 
+                    spotsList.Add(cs);
+                }
+            }
+            if (spotsList.Count > 0)
+            {
+                return JsonSerializer.Serialize(spotsList);
+            }
+            else
+            {
+                response.ErrorMessage = "no data found";
+                return JsonSerializer.Serialize(response);
+            }
+        }
     }
 }

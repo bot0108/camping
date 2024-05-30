@@ -18,7 +18,8 @@
         public int capacity { get; set; }
         public string description { get; set; }
         public int price { get; set; }
-    }
+        public List<IFormFile> Images { get; set; }
+}
     public class UserLoginRequest
     {
         public string email { get; set; }

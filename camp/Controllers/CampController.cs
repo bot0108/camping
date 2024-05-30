@@ -115,7 +115,7 @@ namespace camp.Controllers
         }
         [HttpPost]
         [Route("AddListing")]
-        public async Task<IActionResult> AddListing(Spot newSpot)
+        public async Task<IActionResult> AddListing([FromForm] Spot newSpot)
         {
             try
             {
@@ -123,8 +123,9 @@ namespace camp.Controllers
                 {
                     await con.OpenAsync();
 
-                    string query = "INSERT INTO spots (spotname, location, capacity, description, price) VALUES (@SpotName, @Location, @Capacity, @Description, @Price)";
-                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    // Insert the spot details
+                    string insertSpotQuery = "INSERT INTO spots (spotname, location, capacity, description, price) VALUES (@SpotName, @Location, @Capacity, @Description, @Price)";
+                    using (MySqlCommand cmd = new MySqlCommand(insertSpotQuery, con))
                     {
                         cmd.Parameters.AddWithValue("@SpotName", newSpot.spotname);
                         cmd.Parameters.AddWithValue("@Location", newSpot.location);
@@ -133,6 +134,37 @@ namespace camp.Controllers
                         cmd.Parameters.AddWithValue("@Price", newSpot.price);
 
                         await cmd.ExecuteNonQueryAsync();
+                    }
+
+                    // Retrieve the last inserted ID
+                    long spot_id;
+                    string getLastInsertedIdQuery = "SELECT LAST_INSERT_ID()";
+                    using (MySqlCommand cmd = new MySqlCommand(getLastInsertedIdQuery, con))
+                    {
+                        var lastInsertedId = await cmd.ExecuteScalarAsync();
+                        spot_id = Convert.ToInt64(lastInsertedId);
+                    }
+
+                    // Handle image uploads
+                    if (newSpot.Images != null && newSpot.Images.Count > 0)
+                    {
+                        foreach (var image in newSpot.Images)
+                        {
+                            var filePath = Path.Combine( image.FileName);
+                            using (var stream = new FileStream(filePath, FileMode.Create))
+                            {
+                                await image.CopyToAsync(stream);
+                            }
+
+                            string insertImageQuery = "INSERT INTO spot_images (spot_id, image_path) VALUES (@SpotId, @ImagePath)";
+                            using (MySqlCommand imageCmd = new MySqlCommand(insertImageQuery, con))
+                            {
+                                imageCmd.Parameters.AddWithValue("@SpotId", spot_id);
+                                imageCmd.Parameters.AddWithValue("@ImagePath", filePath);
+
+                                await imageCmd.ExecuteNonQueryAsync();
+                            }
+                        }
                     }
                 }
 
@@ -143,6 +175,8 @@ namespace camp.Controllers
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
+
+
         [HttpPost]
         [Route("Login")]
         public async Task<IActionResult> Login(UserLoginRequest loginRequest)

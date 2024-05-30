@@ -119,6 +119,7 @@ namespace camp.Controllers
         {
             try
             {
+                string uploadFolder = @"D:\megoldasok\campingproject\camp-app\src\assets";
                 using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
                 {
                     await con.OpenAsync();
@@ -150,7 +151,7 @@ namespace camp.Controllers
                     {
                         foreach (var image in newSpot.Images)
                         {
-                            var filePath = Path.Combine( image.FileName);
+                            var filePath = Path.Combine(uploadFolder,image.FileName);
                             using (var stream = new FileStream(filePath, FileMode.Create))
                             {
                                 await image.CopyToAsync(stream);
@@ -232,6 +233,11 @@ namespace camp.Controllers
                     cs.spotname = Convert.ToString(dt.Rows[i]["spotname"]);
                     cs.description = Convert.ToString(dt.Rows[i]["description"]);
 
+                    // Retrieve image paths for each spot
+                    List<string> imagePaths = GetImagePathsForSpot(con, Convert.ToInt64(dt.Rows[i]["id"])); // Using 'id' as the primary key column
+
+                    cs.imagePaths = imagePaths;
+
                     spotsList.Add(cs);
                 }
             }
@@ -245,6 +251,45 @@ namespace camp.Controllers
                 return JsonSerializer.Serialize(response);
             }
         }
+
+        // Helper method to get image paths for a spot
+        // Helper method to get image paths for a spot
+        private List<string> GetImagePathsForSpot(MySqlConnection con, long spotId)
+        {
+            List<string> imagePaths = new List<string>();
+            try
+            {
+                con.Open(); // Open the connection
+
+                // Query to retrieve image paths for the spot with given spotId
+                string query = "SELECT image_path FROM spot_images WHERE spot_id = @SpotId";
+                using (MySqlCommand cmd = new MySqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@SpotId", spotId);
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            imagePaths.Add(Convert.ToString(reader["image_path"]));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle any exceptions
+                Console.WriteLine("Error retrieving image paths for spot: " + ex.Message);
+            }
+            finally
+            {
+                con.Close(); // Close the connection
+            }
+            return imagePaths;
+        }
+
+
+
+
 
     }
 }

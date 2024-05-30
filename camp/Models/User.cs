@@ -29,6 +29,8 @@
     {
         public string spotname { get; set; }
         public string description { get; set; }
+
+        public List <string> imagePaths { get; set; }
     }
 
    

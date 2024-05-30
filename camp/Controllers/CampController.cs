@@ -94,12 +94,13 @@ namespace camp.Controllers
                 {
                     await con.OpenAsync();
 
-                    string query = "INSERT INTO user (name,email,password) VALUES (@Name,@Email,@Password)";
+                    string query = "INSERT INTO user (name,email,password,isowner) VALUES (@Name,@Email,@Password,@IsOwner)";
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@Name", newUser.name);
                         cmd.Parameters.AddWithValue("@Email", newUser.email);
                         cmd.Parameters.AddWithValue("@Password", newUser.password);
+                        cmd.Parameters.AddWithValue("@IsOwner", newUser.isowner);
 
                         await cmd.ExecuteNonQueryAsync();
                     }
@@ -210,5 +211,6 @@ namespace camp.Controllers
                 return JsonSerializer.Serialize(response);
             }
         }
+
     }
 }

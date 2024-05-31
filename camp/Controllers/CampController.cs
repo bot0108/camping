@@ -119,7 +119,6 @@ namespace camp.Controllers
         {
             try
             {
-                string uploadFolder = @"D:\megoldasok\campingproject\camp-app\src\assets";
                 using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
                 {
                     await con.OpenAsync();
@@ -151,17 +150,18 @@ namespace camp.Controllers
                     {
                         foreach (var image in newSpot.Images)
                         {
-                            var filePath = Path.Combine(uploadFolder,image.FileName);
-                            using (var stream = new FileStream(filePath, FileMode.Create))
+                            byte[] imageData;
+                            using (var ms = new MemoryStream())
                             {
-                                await image.CopyToAsync(stream);
+                                await image.CopyToAsync(ms);
+                                imageData = ms.ToArray();
                             }
 
-                            string insertImageQuery = "INSERT INTO spot_images (spot_id, image_path) VALUES (@SpotId, @ImagePath)";
+                            string insertImageQuery = "INSERT INTO spot_images (spot_id, image_data) VALUES (@SpotId, @ImageData)";
                             using (MySqlCommand imageCmd = new MySqlCommand(insertImageQuery, con))
                             {
                                 imageCmd.Parameters.AddWithValue("@SpotId", spot_id);
-                                imageCmd.Parameters.AddWithValue("@ImagePath", filePath);
+                                imageCmd.Parameters.AddWithValue("@ImageData", imageData);
 
                                 await imageCmd.ExecuteNonQueryAsync();
                             }
@@ -233,10 +233,10 @@ namespace camp.Controllers
                     cs.spotname = Convert.ToString(dt.Rows[i]["spotname"]);
                     cs.description = Convert.ToString(dt.Rows[i]["description"]);
 
-                    // Retrieve image paths for each spot
-                    List<string> imagePaths = GetImagePathsForSpot(con, Convert.ToInt64(dt.Rows[i]["id"])); // Using 'id' as the primary key column
+                    // Retrieve image data for each spot
+                    List<string> imageBase64Strings = GetImageBase64StringsForSpot(con, Convert.ToInt64(dt.Rows[i]["id"]));
 
-                    cs.imagePaths = imagePaths;
+                    cs.imagePaths = imageBase64Strings;
 
                     spotsList.Add(cs);
                 }
@@ -252,17 +252,19 @@ namespace camp.Controllers
             }
         }
 
-        // Helper method to get image paths for a spot
-        // Helper method to get image paths for a spot
-        private List<string> GetImagePathsForSpot(MySqlConnection con, long spotId)
+        // Helper method to get image base64 strings for a spot
+        private List<string> GetImageBase64StringsForSpot(MySqlConnection con, long spotId)
         {
-            List<string> imagePaths = new List<string>();
+            List<string> imageBase64Strings = new List<string>();
             try
             {
-                con.Open(); // Open the connection
+                if (con.State != ConnectionState.Open)
+                {
+                    con.Open(); // Open the connection if it's not already open
+                }
 
-                // Query to retrieve image paths for the spot with given spotId
-                string query = "SELECT image_path FROM spot_images WHERE spot_id = @SpotId";
+                // Query to retrieve image data for the spot with given spotId
+                string query = "SELECT image_data FROM spot_images WHERE spot_id = @SpotId";
                 using (MySqlCommand cmd = new MySqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@SpotId", spotId);
@@ -270,7 +272,9 @@ namespace camp.Controllers
                     {
                         while (reader.Read())
                         {
-                            imagePaths.Add(Convert.ToString(reader["image_path"]));
+                            byte[] imageData = (byte[])reader["image_data"];
+                            string base64String = Convert.ToBase64String(imageData);
+                            imageBase64Strings.Add(base64String);
                         }
                     }
                 }
@@ -278,17 +282,14 @@ namespace camp.Controllers
             catch (Exception ex)
             {
                 // Handle any exceptions
-                Console.WriteLine("Error retrieving image paths for spot: " + ex.Message);
+                Console.WriteLine("Error retrieving image data for spot: " + ex.Message);
             }
             finally
             {
                 con.Close(); // Close the connection
             }
-            return imagePaths;
+            return imageBase64Strings;
         }
-
-
-
 
 
     }

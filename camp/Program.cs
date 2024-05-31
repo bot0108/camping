@@ -42,6 +42,9 @@ namespace camp
             // Enable CORS
             app.UseCors("AllowSpecificOrigin");
 
+            // Serve static files
+            app.UseStaticFiles();
+
             app.UseAuthorization();
 
             app.MapControllers();

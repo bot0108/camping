@@ -7,7 +7,6 @@
         public string email { get; set; }
         public string password { get; set; }
         public int isowner { get; set; }
-        public List<IFormFile> profileImages { get; set; }
     }
 }
     public class Spot

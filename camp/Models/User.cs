@@ -30,7 +30,9 @@
         public string description { get; set; }
 
         public List <string> imagePaths { get; set; }
-    }
+        public int capacity { get; set; }
+        public decimal price { get; set; }
+}
 
    
     

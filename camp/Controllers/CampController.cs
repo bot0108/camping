@@ -188,23 +188,35 @@ namespace camp.Controllers
                 {
                     await con.OpenAsync();
 
-                    string query = "SELECT * FROM user WHERE email = @Email AND password = @Password";
+                    string query = "SELECT email, password, isOwner, name FROM user WHERE email = @Email";
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@Email", loginRequest.email);
-                        cmd.Parameters.AddWithValue("@Password", loginRequest.password);
 
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
-                            if (reader.HasRows)
+                            if (reader.Read())
                             {
-                                // Authentication successful
-                                return Ok(new { success = true });
+                                var storedPasswordHash = reader["password"].ToString();
+                                var isowner = Convert.ToInt32(reader["isowner"]);
+                                var name = reader["name"].ToString(); // Retrieve the user's name
+
+                                // Verify the provided password against the stored hash
+                                if (BCrypt.Net.BCrypt.Verify(loginRequest.password, storedPasswordHash))
+                                {
+                                    // Password matches, authentication successful
+                                    return Ok(new { success = true, message = "Login successful", isowner, name });
+                                }
+                                else
+                                {
+                                    // Password does not match
+                                    return Ok(new { success = false, message = "Invalid email or password" });
+                                }
                             }
                             else
                             {
-                                // Authentication failed
-                                return Ok(new { success = false });
+                                // User not found
+                                return Ok(new { success = false, message = "Invalid email or password" });
                             }
                         }
                     }
@@ -215,6 +227,8 @@ namespace camp.Controllers
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
+
+
         [HttpGet]
         [Route("GetAllSpots")]
         public string GetSpots()
@@ -232,6 +246,8 @@ namespace camp.Controllers
                     FeaturedSite cs = new FeaturedSite();
                     cs.spotname = Convert.ToString(dt.Rows[i]["spotname"]);
                     cs.description = Convert.ToString(dt.Rows[i]["description"]);
+                    cs.capacity = Convert.ToInt32(dt.Rows[i]["capacity"]);
+                    cs.price = Convert.ToDecimal(dt.Rows[i]["price"]);
 
                     // Retrieve image data for each spot
                     List<string> imageBase64Strings = GetImageBase64StringsForSpot(con, Convert.ToInt64(dt.Rows[i]["id"]));

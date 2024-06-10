@@ -12,38 +12,41 @@ namespace camp
 
             // Add services to the container.
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
 
-            // Add CORS policy
+            // Configure CORS policy
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigin",
                     builder =>
                     {
-                        builder.WithOrigins("http://localhost:8080")
+                        builder.WithOrigins("http://localhost:8080") // Adjust to match your frontend origin
                                .AllowAnyHeader()
                                .AllowAnyMethod();
                     });
             });
+
+            // Add Swagger/OpenAPI documentation
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
+                // Enable Swagger UI
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            // Enable HTTPS redirection (optional)
+            // app.UseHttpsRedirection();
 
             // Enable CORS
             app.UseCors("AllowSpecificOrigin");
 
-            // Serve static files
-            app.UseStaticFiles();
+            // Serve static files (if needed)
+            // app.UseStaticFiles();
 
             app.UseAuthorization();
 

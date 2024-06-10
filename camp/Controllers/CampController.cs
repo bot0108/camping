@@ -114,6 +114,33 @@ namespace camp.Controllers
             }
         }
         [HttpPost]
+        [Route("CreateBooking")]
+        public async Task<IActionResult> CreateBooking(AddBooking booking)
+        {
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection").ToString()))
+                {
+                    await con.OpenAsync();
+
+                    string query = "INSERT INTO bookings (spotID,userID) VALUES (@SpotID,@UserID)";
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@SpotID", booking.spotID);
+                        cmd.Parameters.AddWithValue("@UserID", booking.userID);
+
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                return Ok("User added successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+        [HttpPost]
         [Route("AddListing")]
         public async Task<IActionResult> AddListing([FromForm] Spot newSpot)
         {
@@ -124,7 +151,7 @@ namespace camp.Controllers
                     await con.OpenAsync();
 
                     // Insert the spot details
-                    string insertSpotQuery = "INSERT INTO spots (spotname, location, capacity, description, price) VALUES (@SpotName, @Location, @Capacity, @Description, @Price)";
+                    string insertSpotQuery = "INSERT INTO spots (spotname, location, capacity, description, price, userIDFK) VALUES (@SpotName, @Location, @Capacity, @Description, @Price , @UserIDFK)";
                     using (MySqlCommand cmd = new MySqlCommand(insertSpotQuery, con))
                     {
                         cmd.Parameters.AddWithValue("@SpotName", newSpot.spotname);
@@ -132,6 +159,7 @@ namespace camp.Controllers
                         cmd.Parameters.AddWithValue("@Capacity", newSpot.capacity);
                         cmd.Parameters.AddWithValue("@Description", newSpot.description);
                         cmd.Parameters.AddWithValue("@Price", newSpot.price);
+                        cmd.Parameters.AddWithValue("@UserIDFK", newSpot.userIDFK);
 
                         await cmd.ExecuteNonQueryAsync();
                     }
@@ -188,7 +216,7 @@ namespace camp.Controllers
                 {
                     await con.OpenAsync();
 
-                    string query = "SELECT email, password, isOwner, name FROM user WHERE email = @Email";
+                    string query = "SELECT id, email, password, isOwner, name FROM user WHERE email = @Email";
                     using (MySqlCommand cmd = new MySqlCommand(query, con))
                     {
                         cmd.Parameters.AddWithValue("@Email", loginRequest.email);
@@ -197,6 +225,7 @@ namespace camp.Controllers
                         {
                             if (reader.Read())
                             {
+                                var userId = reader["id"].ToString();
                                 var storedPasswordHash = reader["password"].ToString();
                                 var isowner = Convert.ToInt32(reader["isowner"]);
                                 var name = reader["name"].ToString(); // Retrieve the user's name
@@ -205,7 +234,7 @@ namespace camp.Controllers
                                 if (BCrypt.Net.BCrypt.Verify(loginRequest.password, storedPasswordHash))
                                 {
                                     // Password matches, authentication successful
-                                    return Ok(new { success = true, message = "Login successful", isowner, name });
+                                    return Ok(new { success = true, message = "Login successful", isowner, name, id = userId });
                                 }
                                 else
                                 {
@@ -229,6 +258,7 @@ namespace camp.Controllers
         }
 
 
+
         [HttpGet]
         [Route("GetAllSpots")]
         public string GetSpots()
@@ -248,6 +278,8 @@ namespace camp.Controllers
                     cs.description = Convert.ToString(dt.Rows[i]["description"]);
                     cs.capacity = Convert.ToInt32(dt.Rows[i]["capacity"]);
                     cs.price = Convert.ToDecimal(dt.Rows[i]["price"]);
+                    cs.userIDFK = Convert.ToInt32(dt.Rows[i]["userIDFK"]);
+                    cs.id = Convert.ToInt32(dt.Rows[i]["id"]);
 
                     // Retrieve image data for each spot
                     List<string> imageBase64Strings = GetImageBase64StringsForSpot(con, Convert.ToInt64(dt.Rows[i]["id"]));

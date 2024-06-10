@@ -18,6 +18,12 @@
         public string description { get; set; }
         public int price { get; set; }
         public List<IFormFile> Images { get; set; }
+        public int userIDFK { get; set; }
+}
+public class AddBooking
+{
+    public int userID { get; set; }
+    public int spotID { get; set; }
 }
     public class UserLoginRequest
     {
@@ -27,11 +33,13 @@
     public class FeaturedSite
     {
         public string spotname { get; set; }
+        public int id { get; set; }
         public string description { get; set; }
 
         public List <string> imagePaths { get; set; }
         public int capacity { get; set; }
         public decimal price { get; set; }
+        public int userIDFK { get; set; }
 }
 
    

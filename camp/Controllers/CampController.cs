@@ -113,6 +113,146 @@ namespace camp.Controllers
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
+        [HttpDelete]
+        [Route("DeleteSpot/{id}")]
+        public async Task<IActionResult> DeleteSpot(int id)
+        {
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection").ToString()))
+                {
+                    await con.OpenAsync();
+                    using (var transaction = await con.BeginTransactionAsync())
+                    {
+                        try
+                        {
+                            // Delete from bookings
+                            string deleteBookingsQuery = "DELETE FROM bookings WHERE spotID = @SpotID";
+                            using (MySqlCommand cmd = new MySqlCommand(deleteBookingsQuery, con, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@SpotID", id);
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+
+                            // Delete from spot_images
+                            string deleteImagesQuery = "DELETE FROM spot_images WHERE spot_id = @SpotID";
+                            using (MySqlCommand cmd = new MySqlCommand(deleteImagesQuery, con, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@SpotID", id);
+                                await cmd.ExecuteNonQueryAsync();
+                            }
+
+                            // Delete from spots
+                            string deleteSpotsQuery = "DELETE FROM spots WHERE id = @SpotID";
+                            using (MySqlCommand cmd = new MySqlCommand(deleteSpotsQuery, con, transaction))
+                            {
+                                cmd.Parameters.AddWithValue("@SpotID", id);
+                                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                                if (rowsAffected > 0)
+                                {
+                                    await transaction.CommitAsync();
+                                    return Ok("Listing deleted successfully.");
+                                }
+                                else
+                                {
+                                    await transaction.RollbackAsync();
+                                    return NotFound("Listing not found.");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            return StatusCode(500, $"Error: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+
+
+        [HttpGet]
+        [Route("GetAllBookings")]
+        public async Task<IActionResult> GetAllBookings()
+        {
+            try
+            {
+                List<Booking> bookings = new List<Booking>();
+
+                using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection").ToString()))
+                {
+                    await con.OpenAsync();
+
+                    string query = "SELECT * FROM bookings";
+
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        using (MySqlDataReader rdr = cmd.ExecuteReader())
+                        {
+                            while (rdr.Read())
+                            {
+                                Booking booking = new Booking
+                                {
+                                    BookingId = Convert.ToInt32(rdr["bookingID"]),
+                                    SpotId = Convert.ToInt32(rdr["spotID"]),
+                                    UserId = Convert.ToInt32(rdr["userID"])
+                                    // Add more properties if needed
+                                };
+
+                                bookings.Add(booking);
+                            }
+                        }
+                    }
+                }
+
+                return Ok(bookings);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+        [HttpPut]
+        [Route("Update")]
+        public async Task<IActionResult> Update(User updatedUser)
+        {
+            try
+            {
+                using (MySqlConnection con = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection").ToString()))
+                {
+                    await con.OpenAsync();
+
+                    string query = "UPDATE user SET email = @Email, password = @Password WHERE id = @Id";
+                    using (MySqlCommand cmd = new MySqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@Email", updatedUser.email);
+                        cmd.Parameters.AddWithValue("@Password", updatedUser.password);
+                        cmd.Parameters.AddWithValue("@Id", updatedUser.id);
+
+                        int rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                        if (rowsAffected > 0)
+                        {
+                            return Ok("User information updated successfully.");
+                        }
+                        else
+                        {
+                            return StatusCode(500, "Failed to update user information. User not found.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
+
         [HttpPost]
         [Route("CreateBooking")]
         public async Task<IActionResult> CreateBooking(AddBooking booking)
@@ -140,7 +280,9 @@ namespace camp.Controllers
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
-        [HttpPost]
+        
+    
+    [HttpPost]
         [Route("AddListing")]
         public async Task<IActionResult> AddListing([FromForm] Spot newSpot)
         {

@@ -46,7 +46,6 @@ public class Booking
     public int BookingId { get; set; }
     public int SpotId { get; set; }
     public int UserId { get; set; }
-    // Add more properties if needed
 }
 
 
